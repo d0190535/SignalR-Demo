@@ -1,0 +1,74 @@
+﻿@{
+    ViewBag.Title = "Chatting 4 Fun";
+}
+
+<h2 style="text-align:left;float:left;">Chatting... You are under the name&#160</h2>
+<h2 id="displayname-showcase" style="color: green; text-align:left;float:left;"></h2>
+<input type="hidden" id="displayname" />
+<hr style="clear:both;" />
+<div class="container">
+    <label for="message"> Your awesome message:</label><input id="message" type="text" name="message" />
+    <div id="chatWindow" style="width:100%; height: 600px; overflow: scroll; border: 1px solid grey"></div>
+</div>
+
+@section scripts
+{
+    <script src="~/Scripts/jquery-1.10.2.min.js" type="text/javascript"></script>
+    <script src="~/Scripts/jquery.signalR-2.2.0.min.js" type="text/javascript"></script>
+    <script src="~/signalr/hubs" type="text/javascript"></script>
+    <script type="text/javascript">
+        $(function() {
+            $('#displayname').val(prompt('Enter your name:', ''));
+            $('#displayname-showcase').text($('#displayname').val());
+            $('#message').focus();
+
+            var myHub = $.connection.ChatHub;
+            var window = $('#chatWindow');
+
+            $('#chatWindow').bind("DOMSubtreeModified", function () {
+                window.scrollTop(window[0].scrollHeight);
+            });    
+
+            // from server to client
+            myHub.client.sendWelcomeMessage = function() {
+                window.append("<i><font color=grey>This is not a test.  Chat privilege has been granted.</font></i><br/>");
+            }
+
+            myHub.client.addNewMessageToPage = function(user, message) {
+                window.append(getCurrentTimeFormattedText() + "<b><font color=blue>" + user + "</b></font>: " + message + "<br/>");
+            }
+
+            myHub.client.joined = function (contextId, name) {
+                window.append(getCurrentTimeFormattedText() + "<b><i><font color=green>" + name + "@@" + contextId + " has joined.</i><br/>");
+            }
+
+            myHub.client.left = function (contextId, name) {
+                window.append(getCurrentTimeFormattedText() + "<b><i><font color=red>" + name + "@@" + contextId + " has betrayed.</i><br/>");
+            }
+
+            startHub();
+
+
+            function startHub() {
+                $.connection.hub.qs = "name=" + $('#displayname').val();
+                $.connection.hub.start().done(function () {
+                    myHub.server.sendWelcomeMessage();
+                }).fail(function () {
+                    alert('Could not connect!');
+                });
+            }
+
+            function getCurrentTimeFormattedText() {
+                var currTime = new Date();
+                return "<font color=grey[" + currTime.getHours() + ":" + currTime.getMinutes() + "]</font>";
+            }
+
+            $(document).keypress(function(e) {
+                if (e.which == 13) {
+                    myHub.server.send($('#displayname').val(), $('#message').val());
+                    $('#message').val("");
+                }
+            });
+        });
+    </script>
+}
